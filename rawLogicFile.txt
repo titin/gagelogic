@@ -1,0 +1,189 @@
+//: Playground - noun: a place where people can play
+
+import UIKit
+import Foundation
+
+
+func isOddOrEven(input: Int) -> String {
+    if(input % 2 != 0) {
+        //License plate ganjil
+        return "Odd"
+    } else {
+        //License Plate Genap
+        return "Even"
+    }
+}
+
+
+func secondsToHoursMinutesSeconds (seconds : Int) -> (Int, Int, Int) {
+    return (seconds / 3600, (seconds % 3600) / 60, (seconds % 3600) % 60)
+}
+
+
+func pass(licenseNo: String) -> (Bool, String) {
+    var canPass: Bool = false
+    var licenseOddOrEven: String = ""
+    var dateOddOrEven: String = ""
+    var timeUntil = ""
+    let publicHoliday = ["2016/03/21",
+                         "2016/05/20"
+                         ]
+    
+    
+    
+    /* Cara lain
+     let digits = "0123456789"
+     
+     let numbers = licenseNo.characters.split{
+     digits.containsString(String($0)) == false
+     
+     }.map{String($0)}
+     */
+
+    
+    //Determine whether license plate is odd or even
+    let intString = licenseNo.componentsSeparatedByCharactersInSet(
+        NSCharacterSet
+            .decimalDigitCharacterSet()
+            .invertedSet)
+        .joinWithSeparator("")
+
+    licenseOddOrEven = isOddOrEven(Int(intString)!)
+    
+    //Get current date
+    let dayTimePeriodFormatter = NSDateFormatter()
+    dayTimePeriodFormatter.locale = NSLocale(localeIdentifier: "en_US")
+    
+    dayTimePeriodFormatter.dateFormat = "yyyy/MM/dd"
+    let fullDateString = dayTimePeriodFormatter.stringFromDate(NSDate())
+
+    
+    dayTimePeriodFormatter.dateFormat = "dd"
+    let dateString = dayTimePeriodFormatter.stringFromDate(NSDate())
+    
+
+    dayTimePeriodFormatter.dateFormat = "E"
+    let dayName = dayTimePeriodFormatter.stringFromDate(NSDate())
+
+    dateOddOrEven = isOddOrEven(Int(dateString)!)
+    
+    
+    //- Check date , find if today is saturday , sunday or public holiday, if yes all plate is good to go
+    if(dayName.uppercaseString == "SUN" || dayName.uppercaseString == "SAT") {
+        canPass = true
+        return (canPass, timeUntil)
+    }
+
+    if(publicHoliday.contains(fullDateString)) {
+        canPass = true
+        return (canPass, timeUntil)
+    }
+    
+    //- If not, compare license plate with today date , if both are the same, its good to go
+    if(dateOddOrEven == licenseOddOrEven) {
+        canPass = true
+        return (canPass, timeUntil)
+    }
+
+    
+    
+    //- If not, compare the hours with "prohibited hours range" , if it is not in prohibited hours range, its good to go. Prohibited hours range 1 = 07:00 - 10:00 , Prohibited hours range 2 = 16:00 - 20:00
+    //Get current hours
+    dayTimePeriodFormatter.dateFormat = "HH"
+    let hourString = dayTimePeriodFormatter.stringFromDate(NSDate())
+    let hourInt = Int(hourString)
+        
+    //Get current minute
+    dayTimePeriodFormatter.dateFormat = "mm"
+    let minuteString = dayTimePeriodFormatter.stringFromDate(NSDate())
+    let minuteInt = Int(minuteString)
+    
+    
+    //Check for Prohibited hours range 1
+    if( morningCheck(fullDateString, intHour: hourInt!, intMinute: minuteInt!, timeUntil: &timeUntil) == false) {
+        canPass = true
+    }
+    
+    //Check for Prohibited hours range 2
+    if(canPass == false && timeUntil == "") {
+        if( eveningCheck(fullDateString, intHour: hourInt!, intMinute: minuteInt!, timeUntil: &timeUntil) == false) {
+            canPass = true
+            return (canPass, timeUntil)
+        }
+    }
+
+    return (canPass, timeUntil)
+}
+
+func eveningCheck(fullDateString: String,intHour: Int, intMinute: Int, inout timeUntil: String) -> Bool {
+    
+    //Shall return true if within night range
+    
+    let formatter = NSDateFormatter()
+    formatter.dateFormat = "yyyy/MM/dd HH:mm"
+    let minHours = formatter.dateFromString(fullDateString + " 16:00")
+    let maxHours = formatter.dateFromString(fullDateString + " 20:00")
+    
+    if((minHours?.compare(NSDate()) == NSComparisonResult.OrderedAscending || minHours?.compare(NSDate()) == NSComparisonResult.OrderedSame) &&
+        (maxHours?.compare(NSDate()) == NSComparisonResult.OrderedDescending || maxHours?.compare(NSDate()) == NSComparisonResult.OrderedSame)) {
+    
+        let elapsedTime =  maxHours?.timeIntervalSinceNow
+        let counter = secondsToHoursMinutesSeconds(Int(elapsedTime!))
+    
+        timeUntil = String(counter.0) + " Jam " + String(counter.1) + " Menit"
+        return true
+    } else {
+        //not within range
+        //less than 16 o clock
+        if(minHours?.compare(NSDate()) == NSComparisonResult.OrderedDescending) {
+            let elapsedTime = minHours?.timeIntervalSinceNow
+            let counter = secondsToHoursMinutesSeconds(Int(elapsedTime!))
+            timeUntil = String(counter.0) + " Jam " + String(counter.1) + " Menit"
+        
+        }
+        return false
+    }
+}
+
+func morningCheck(fullDateString: String,intHour: Int, intMinute: Int, inout timeUntil: String) -> Bool {
+
+    //Shall return true if within morning range OR is more than 10 o clock
+    
+    let formatter = NSDateFormatter()
+    formatter.dateFormat = "yyyy/MM/dd HH:mm"
+    let minHours = formatter.dateFromString(fullDateString + " 07:00")
+    let maxHours = formatter.dateFromString(fullDateString + " 10:00")
+    
+    if(maxHours?.compare(NSDate()) == NSComparisonResult.OrderedDescending && maxHours?.compare(NSDate()) == NSComparisonResult.OrderedSame) {
+        //within range
+        if((minHours?.compare(NSDate()) == NSComparisonResult.OrderedAscending || minHours?.compare(NSDate()) == NSComparisonResult.OrderedSame) &&
+            (maxHours?.compare(NSDate()) == NSComparisonResult.OrderedDescending || maxHours?.compare(NSDate()) == NSComparisonResult.OrderedSame)) {
+            
+            let elapsedTime =  maxHours?.timeIntervalSinceNow
+            let counter = secondsToHoursMinutesSeconds(Int(elapsedTime!))
+            
+            timeUntil = String(counter.0) + " Jam " + String(counter.1) + " Menit"
+            return true
+        } else {
+            //not within range
+            //less than 07 o clock
+            if(minHours?.compare(NSDate()) == NSComparisonResult.OrderedDescending) {
+                let elapsedTime = minHours?.timeIntervalSinceNow
+                let counter = secondsToHoursMinutesSeconds(Int(elapsedTime!))
+                timeUntil = String(counter.0) + " Jam " + String(counter.1) + " Menit"
+                
+            }
+            return false
+        }
+    }
+    
+    return true
+}
+
+
+let abc = pass("B 12L47 KLM")
+
+print(abc.0)
+print(abc.1)
+
+
